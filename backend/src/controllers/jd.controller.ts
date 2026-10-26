@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { JobDescription } from "../models/JobDescription.js";
 import { Resume } from "../models/Resume.js";
 import { analyzeJobDescription } from "../services/jd/jd-analyzer.service.js";
+import { Generation } from "../models/Generation.js";
 
 export const createJobDescription = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -61,5 +62,21 @@ export const matchJobDescription = async (req: Request, res: Response, next: Nex
         });
         const supported = matches.filter((match) => match.status === "supported").length;
         res.json({ success: true, data: { method: "Case-insensitive exact phrase presence in approved resume text; this is not a suitability guarantee.", supported, partial: [], missingOrUnverified: matches.filter((match) => match.status !== "supported"), matches } });
+    } catch (error) { next(error); }
+};
+
+export const deleteJobDescription = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.userId || mongoose.connection.readyState !== 1) {
+            res.status(503).json({ success: false, message: "Database is not configured or unavailable" });
+            return;
+        }
+        const job = await JobDescription.findOneAndDelete({ _id: req.params.id, userId: req.userId });
+        if (!job) {
+            res.status(404).json({ success: false, message: "Job description not found" });
+            return;
+        }
+        await Generation.deleteMany({ userId: req.userId, jobDescriptionId: job._id });
+        res.status(204).send();
     } catch (error) { next(error); }
 };

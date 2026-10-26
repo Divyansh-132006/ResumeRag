@@ -254,10 +254,59 @@ function App() {
     }
   };
 
+  const deleteResume = async (id: string) => {
+    if (!confirm("Delete this resume, its uploaded PDF, vectors, and related generations?")) return;
+    setBusy(true);
+    try {
+      await request(`/resumes/${id}`, { method: "DELETE" });
+      setMessage("Resume deleted.");
+      await load();
+    } catch (error) {
+      setMessage(errorMessage(error, "Resume deletion failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteJob = async (id: string) => {
+    if (!confirm("Delete this job description and its related generations?")) return;
+    setBusy(true);
+    try {
+      await request(`/job-descriptions/${id}`, { method: "DELETE" });
+      setMessage("Job description deleted.");
+      await load();
+    } catch (error) {
+      setMessage(errorMessage(error, "Job description deletion failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteGeneration = async (id: string) => {
+    if (!confirm("Delete this generated resume from history?")) return;
+    setBusy(true);
+    try {
+      await request(`/generations/${id}`, { method: "DELETE" });
+      setMessage("Generated resume deleted.");
+      await load();
+    } catch (error) {
+      setMessage(errorMessage(error, "Generated resume deletion failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const deleteAccount = async () => {
-    if (!confirm("Delete your account and all resume data?")) return;
-    await request("/account", { method: "DELETE" });
-    signOut();
+    if (!confirm("Delete your entire account and all saved data? This cannot be undone.")) return;
+    setBusy(true);
+    try {
+      await request("/account", { method: "DELETE" });
+      signOut();
+    } catch (error) {
+      setMessage(errorMessage(error, "Account deletion failed"));
+    } finally {
+      setBusy(false);
+    }
   };
 
   /* ---------------------------- Login / register ------------------------- */
@@ -383,6 +432,13 @@ function App() {
               >
                 Approve canonical data
               </button>
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={() => void deleteResume(resume._id)}
+              >
+                Delete resume
+              </button>
               <pre>{JSON.stringify(resume.structuredResume, null, 2)}</pre>
             </article>
           ))}
@@ -421,6 +477,13 @@ function App() {
                 <button disabled={busy} onClick={() => void generate(job._id)}>
                   Generate grounded resume
                 </button>
+                <button
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() => void deleteJob(job._id)}
+                >
+                  Delete job
+                </button>
               </article>
             ))}
           </section>
@@ -440,6 +503,13 @@ function App() {
               >
                 Export PDF
               </button>
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={() => void deleteGeneration(generation._id)}
+              >
+                Delete
+              </button>
               <pre>{JSON.stringify(generation.output, null, 2)}</pre>
             </article>
           ))}
@@ -451,10 +521,12 @@ function App() {
         <section className="panel">
           <h2>Settings</h2>
           <p>
-            Account deletion removes MongoDB records, stored uploads, and
-            attempts Qdrant vector cleanup.
+            Delete individual resumes, job descriptions, and generated results
+            from their respective pages. Your account remains active.
           </p>
-          <button onClick={() => void deleteAccount()}>Delete account</button>
+          <button disabled={busy} onClick={() => void deleteAccount()}>
+            Delete entire account
+          </button>
         </section>
       )}
 

@@ -46,6 +46,18 @@ export const listGenerations = async (req: Request, res: Response, next: NextFun
     } catch (error) { next(error); }
 };
 
+export const deleteGeneration = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.userId || databaseUnavailable(res)) return;
+        const generation = await Generation.findOneAndDelete({ _id: req.params.id, userId: req.userId });
+        if (!generation) {
+            res.status(404).json({ success: false, message: "Generation not found" });
+            return;
+        }
+        res.status(204).send();
+    } catch (error) { next(error); }
+};
+
 export const exportGeneration = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.userId || databaseUnavailable(res)) return;

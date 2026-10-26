@@ -9,6 +9,7 @@ import mongoose from "mongoose";
 import { getEnv } from "../config/env.js";
 import { ingestResume } from "../services/rag/ingestion.service.js";
 import { deleteQdrantResumePoints } from "../config/qdrant.js";
+import { Generation } from "../models/Generation.js";
 
 const requireDatabase = (res: Response): boolean => {
     if (mongoose.connection.readyState !== 1) {
@@ -85,6 +86,7 @@ export const deleteResume = async (req: Request, res: Response, next: NextFuncti
             res.status(404).json({ success: false, message: "Resume not found" });
             return;
         }
+        await Generation.deleteMany({ userId: req.userId, resumeId: resume._id });
         await unlink(path.resolve(process.cwd(), getEnv().UPLOAD_DIR, resume.filename)).catch(() => undefined);
         let vectorsDeleted = true;
         try { await deleteQdrantResumePoints(req.userId, String(resume._id)); } catch { vectorsDeleted = false; }

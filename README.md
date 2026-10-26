@@ -12,7 +12,7 @@ Resume RAG is an evidence-first resume workspace. It extracts text from PDF resu
 - Deterministic job-description keyword/requirement analysis.
 - Qdrant collection initialization, approved-resume ingestion, filtered evidence retrieval, and vector deletion.
 - Configurable OpenAI-compatible embedding and LLM adapters with strict output validation.
-- Evidence-linked generation history, account deletion, and PDF export that preserves the uploaded resume pages and appends an evidence-backed tailored page with job keywords.
+- Evidence-linked generation history, account deletion, and PDF export that preserves the uploaded resume pages and appends an evidence-backed tailored page using the source PDF's page size, margins, typography scale, and spacing. Job-description keywords are used to tailor supported evidence-backed content rather than being printed as a keyword list.
 - React/Vite frontend for registration, login, upload, structured review, and job-description submission.
 - Health and readiness endpoints.
 
