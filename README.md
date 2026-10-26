@@ -39,6 +39,15 @@ Resume RAG is an evidence-first resume workspace. It extracts text from PDF resu
 
 5. Open `http://localhost:5173`.
 
+## Render backend deployment
+
+Set the Render service root directory to `backend`. Use these commands:
+
+- Build command: `npm install && npm run build`
+- Start command: `npm start`
+
+The backend also compiles during `npm install` through its `postinstall` script, which prevents deployment from starting without `dist/server.js` when a platform uses `npm install` as its build command.
+
 `GET http://localhost:5000/health` checks process health. `GET http://localhost:5000/ready` reports whether MongoDB is connected.
 
 ## Provider configuration
