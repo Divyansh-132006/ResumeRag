@@ -48,6 +48,20 @@ Set the Render service root directory to `backend`. Use these commands:
 
 The backend also compiles during `npm install` through its `postinstall` script, which prevents deployment from starting without `dist/server.js` when a platform uses `npm install` as its build command.
 
+Set these Render environment variables:
+
+```env
+FRONTEND_ORIGIN=https://jobresumerag.netlify.app
+```
+
+For the Netlify site, set this environment variable and redeploy:
+
+```env
+VITE_API_URL=https://resumerag-j9p1.onrender.com/api
+```
+
+The backend allows the deployed Netlify origin and local Vite development origin only. `FRONTEND_ORIGIN` may contain additional comma-separated trusted origins if needed.
+
 `GET http://localhost:5000/health` checks process health. `GET http://localhost:5000/ready` reports whether MongoDB is connected.
 
 ## Provider configuration

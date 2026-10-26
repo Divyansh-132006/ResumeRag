@@ -2,7 +2,11 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
+const API =
+  import.meta.env.VITE_API_URL ??
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:5000/api"
+    : "https://resumerag-j9p1.onrender.com/api");
 const TOKEN_KEY = "resume-token";
 const PAGES = ["dashboard", "review", "jobs", "history", "settings"];
 
