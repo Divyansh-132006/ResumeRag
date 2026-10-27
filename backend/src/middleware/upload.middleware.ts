@@ -1,9 +1,11 @@
 import multer from 'multer'
 import path from 'path'
 import crypto from 'crypto'
+import { mkdirSync } from "node:fs";
 import { getEnv } from "../config/env.js";
 
 const uploadDir = path.resolve(process.cwd(), getEnv().UPLOAD_DIR);
+mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
     destination : (_req, _file, cb) =>{

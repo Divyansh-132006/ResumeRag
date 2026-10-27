@@ -6,11 +6,16 @@ export const notFound: RequestHandler = (_req, res) => {
 };
 
 export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+    console.error(error instanceof Error ? error.stack ?? error.message : error);
     if (error instanceof multer.MulterError) {
         res.status(400).json({ success: false, message: error.code === "LIMIT_FILE_SIZE" ? "Uploaded file is too large" : "Invalid file upload" });
         return;
     }
     const message = error instanceof Error ? error.message : "Internal server error";
+    if (message === "Only PDF files are supported" || message === "Invalid PDF file signature") {
+        res.status(400).json({ success: false, message });
+        return;
+    }
     const statusCode = typeof error === "object" && error !== null && "statusCode" in error && typeof error.statusCode === "number"
         ? error.statusCode
         : 500;
