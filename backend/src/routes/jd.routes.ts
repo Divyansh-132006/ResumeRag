@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { createJobDescription, deleteJobDescription, listJobDescriptions, matchJobDescription } from "../controllers/jd.controller.js";
+import {
+  createJobDescription,
+  deleteJobDescription,
+  listJobDescriptions,
+  matchJobDescription,
+} from "../controllers/jd.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();

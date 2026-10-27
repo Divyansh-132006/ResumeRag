@@ -31,6 +31,9 @@ type Generation = {
   createdAt: string;
 };
 
+const latexTemplateExample = `% RESUMERAG:SUMMARY:START
+Paste your tailored summary here.
+% RESUMERAG:SUMMARY:END`;
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
@@ -77,6 +80,7 @@ function App() {
   // Job form
   const [jobTitle, setJobTitle] = useState("");
   const [jobText, setJobText] = useState("");
+  const [latexTemplate, setLatexTemplate] = useState(latexTemplateExample);
 
   // UI state
   const [message, setMessage] = useState("");
@@ -264,6 +268,41 @@ function App() {
       setMessage("PDF exported.");
     } catch (error) {
       setMessage(errorMessage(error, "PDF export failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const generateLatex = async (id: string) => {
+    if (!latexTemplate.includes("% RESUMERAG:SUMMARY:START") ||
+        !latexTemplate.includes("% RESUMERAG:SUMMARY:END")) {
+      setMessage("Add both ResumeRag summary markers to the LaTeX template.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await request<{
+        data: { latex: string; pdfBase64: string };
+      }>(`/latex/${id}/generate`, jsonPost("POST", { template: latexTemplate }));
+      const latexBlob = new Blob([result.data.latex], { type: "application/x-tex" });
+      const latexUrl = URL.createObjectURL(latexBlob);
+      const latexLink = document.createElement("a");
+      latexLink.href = latexUrl;
+      latexLink.download = "tailored-resume.tex";
+      latexLink.click();
+      URL.revokeObjectURL(latexUrl);
+
+      const binary = atob(result.data.pdfBase64);
+      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+      const pdfUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const pdfLink = document.createElement("a");
+      pdfLink.href = pdfUrl;
+      pdfLink.download = "tailored-resume.pdf";
+      pdfLink.click();
+      URL.revokeObjectURL(pdfUrl);
+      setMessage("Tailored LaTeX source and PDF downloaded.");
+    } catch (error) {
+      setMessage(errorMessage(error, "LaTeX generation failed"));
     } finally {
       setBusy(false);
     }
@@ -549,6 +588,25 @@ function App() {
                 onClick={() => void exportGeneration(generation._id)}
               >
                 Export PDF
+              </button>
+              <textarea
+                className="latex-template"
+                aria-label="Overleaf LaTeX template"
+                value={latexTemplate}
+                onChange={(event) => setLatexTemplate(event.target.value)}
+                placeholder="Paste your Overleaf main.tex and add the ResumeRag summary markers."
+              />
+              <small>
+                Add <code>% RESUMERAG:SUMMARY:START</code> and{" "}
+                <code>% RESUMERAG:SUMMARY:END</code> around the summary only.
+                All other LaTeX stays unchanged.
+              </small>
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={() => void generateLatex(generation._id)}
+              >
+                Generate LaTeX + PDF
               </button>
               <button
                 className="secondary"

@@ -8,6 +8,7 @@ p { color: #c9b995; line-height: 1.6; }
 .panel { background: #151515; border: 1px solid #3b3428; border-radius: 10px; margin: 20px 0; padding: 24px; }
 input, textarea { background: #0f0f0f; border: 1px solid #514735; border-radius: 6px; color: #f5deb3; display: block; margin: 12px 0; padding: 12px; width: 100%; }
 textarea { min-height: 180px; resize: vertical; }
+.latex-template { font-family: "Cascadia Code", Consolas, monospace; min-height: 240px; }
 button { background: #c5a46d; border: 1px solid #e0c48b; border-radius: 6px; color: #151515; cursor: pointer; font-weight: 700; padding: 11px 18px; }
 button:disabled { cursor: not-allowed; opacity: .5; } button.secondary { background: transparent; color: #f5deb3; }
 .actions { display: flex; gap: 12px; } .drop { border: 1px dashed #806c46; border-radius: 8px; color: #d6bf8d; display: block; padding: 28px; text-align: center; }
