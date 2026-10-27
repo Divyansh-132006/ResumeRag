@@ -62,6 +62,7 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem(TOKEN_KEY));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
 
   // Navigation
@@ -80,6 +81,7 @@ function App() {
   // UI state
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<{ kind: "resume" | "job" | "generation" | "account"; id?: string } | null>(null);
 
   /* ----------------------------- Navigation ------------------------------ */
 
@@ -122,6 +124,10 @@ function App() {
       setMessage("Registration passwords must contain at least 12 characters.");
       return;
     }
+    if (mode === "register" && password !== passwordConfirmation) {
+      setMessage("Passwords do not match.");
+      return;
+    }
     if (!password) {
       setMessage("Enter your password.");
       return;
@@ -134,6 +140,7 @@ function App() {
       );
       localStorage.setItem(TOKEN_KEY, result.data.token);
       setToken(result.data.token);
+      setMessage(mode === "register" ? "Account created successfully." : "Welcome back.");
     } catch (error) {
       setMessage(errorMessage(error, "Authentication failed"));
     } finally {
@@ -144,6 +151,10 @@ function App() {
   const signOut = () => {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
+    setMessage("You have been signed out.");
+    setResumes([]);
+    setJobs([]);
+    setGenerations([]);
   };
 
   const upload = async (file: File) => {
@@ -259,7 +270,11 @@ function App() {
   };
 
   const deleteResume = async (id: string) => {
-    if (!confirm("Delete this resume, its uploaded PDF, vectors, and related generations?")) return;
+    if (pendingConfirmation?.kind !== "resume" || pendingConfirmation.id !== id) {
+      setPendingConfirmation({ kind: "resume", id });
+      return;
+    }
+    setPendingConfirmation(null);
     setBusy(true);
     try {
       await request(`/resumes/${id}`, { method: "DELETE" });
@@ -273,7 +288,11 @@ function App() {
   };
 
   const deleteJob = async (id: string) => {
-    if (!confirm("Delete this job description and its related generations?")) return;
+    if (pendingConfirmation?.kind !== "job" || pendingConfirmation.id !== id) {
+      setPendingConfirmation({ kind: "job", id });
+      return;
+    }
+    setPendingConfirmation(null);
     setBusy(true);
     try {
       await request(`/job-descriptions/${id}`, { method: "DELETE" });
@@ -287,7 +306,11 @@ function App() {
   };
 
   const deleteGeneration = async (id: string) => {
-    if (!confirm("Delete this generated resume from history?")) return;
+    if (pendingConfirmation?.kind !== "generation" || pendingConfirmation.id !== id) {
+      setPendingConfirmation({ kind: "generation", id });
+      return;
+    }
+    setPendingConfirmation(null);
     setBusy(true);
     try {
       await request(`/generations/${id}`, { method: "DELETE" });
@@ -301,7 +324,11 @@ function App() {
   };
 
   const deleteAccount = async () => {
-    if (!confirm("Delete your entire account and all saved data? This cannot be undone.")) return;
+    if (pendingConfirmation?.kind !== "account") {
+      setPendingConfirmation({ kind: "account" });
+      return;
+    }
+    setPendingConfirmation(null);
     setBusy(true);
     try {
       await request("/account", { method: "DELETE" });
@@ -323,6 +350,12 @@ function App() {
 
         <section className="panel">
           <h2>{authMode === "login" ? "Sign in" : "Create account"}</h2>
+          <p className="form-hint">
+            {authMode === "login"
+              ? "Use your account to access your private resume workspace."
+              : "Create an account to securely save your resumes and job descriptions."}
+          </p>
+          <form onSubmit={(event) => { event.preventDefault(); void auth(authMode); }}>
           <input
             type="email"
             placeholder="Email"
@@ -337,30 +370,40 @@ function App() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          {authMode === "register" && (
+            <input
+              type="password"
+              placeholder="Confirm password"
+              autoComplete="new-password"
+              value={passwordConfirmation}
+              onChange={(e) => setPasswordConfirmation(e.target.value)}
+            />
+          )}
           <div className="actions">
             <button
+              type="submit"
               disabled={busy}
-              onClick={() => {
-                setAuthMode("login");
-                void auth("login");
-              }}
             >
-              Sign in
+              {authMode === "login" ? "Sign in" : "Create account"}
             </button>
             <button
+              type="button"
               className="secondary"
               disabled={busy}
               onClick={() => {
-                setAuthMode("register");
-                void auth("register");
+                setAuthMode(authMode === "login" ? "register" : "login");
+                setMessage("");
+                setPassword("");
+                setPasswordConfirmation("");
               }}
             >
-              Register
+              {authMode === "login" ? "Create account" : "Back to sign in"}
             </button>
           </div>
+          </form>
         </section>
 
-        {message && <p className="message">{message}</p>}
+        {message && <p className="message" role="status">{message}</p>}
       </main>
     );
   }
@@ -534,7 +577,41 @@ function App() {
         </section>
       )}
 
-      {message && <p className="message">{message}</p>}
+      {pendingConfirmation && (
+        <section className="confirmation" role="alert">
+          <strong>
+            {pendingConfirmation.kind === "account"
+              ? "Delete your account and all saved data?"
+              : "Delete this item?"}
+          </strong>
+          <span>
+            {pendingConfirmation.kind === "account"
+              ? "This action cannot be undone."
+              : "This action cannot be undone."}
+          </span>
+          <div className="actions">
+            <button
+              onClick={() => {
+                if (pendingConfirmation.kind === "account") {
+                  void deleteAccount();
+                } else if (pendingConfirmation.id) {
+                  const id = pendingConfirmation.id;
+                  if (pendingConfirmation.kind === "resume") void deleteResume(id);
+                  if (pendingConfirmation.kind === "job") void deleteJob(id);
+                  if (pendingConfirmation.kind === "generation") void deleteGeneration(id);
+                }
+              }}
+              disabled={busy}
+            >
+              Confirm deletion
+            </button>
+            <button className="secondary" onClick={() => setPendingConfirmation(null)}>
+              Cancel
+            </button>
+          </div>
+        </section>
+      )}
+      {message && <p className="message" role="status">{message}</p>}
     </main>
   );
 }

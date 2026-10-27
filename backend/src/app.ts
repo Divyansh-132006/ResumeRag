@@ -12,6 +12,7 @@ import accountRoutes from "./routes/account.routes.js";
 import { errorHandler, notFound } from "./middleware/error.middleware.js";
 const app = express();
 const env = getEnv();
+app.set("trust proxy", 1);
 const allowedOrigins = new Set([
     "https://jobresumerag.netlify.app",
     "http://localhost:5173",
