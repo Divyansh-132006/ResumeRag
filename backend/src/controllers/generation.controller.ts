@@ -134,7 +134,8 @@ export const exportGeneration = async (
     const resume = await Resume.findOne({
       _id: generation.resumeId,
       userId: req.userId,
-    }).lean();
+    })
+      .select("+pdfData");
     const job = await JobDescription.findOne({
       _id: generation.jobDescriptionId,
       userId: req.userId,
@@ -153,12 +154,16 @@ export const exportGeneration = async (
       getEnv().UPLOAD_DIR,
       resume.filename,
     );
-    try {
-      await access(originalPdfPath);
-    } catch {
+    const originalPdf = Buffer.isBuffer(resume.pdfData)
+      ? resume.pdfData
+      : await access(originalPdfPath)
+          .then(() => originalPdfPath)
+          .catch(() => undefined);
+    if (!originalPdf) {
       res.status(404).json({
         success: false,
-        message: "Original resume PDF is missing from server storage",
+        message:
+          "Original resume PDF is missing from persistent storage. Upload the resume again to enable export.",
       });
       return;
     }
@@ -181,7 +186,7 @@ export const exportGeneration = async (
       return;
     }
     const pdf = await renderResumePdf(
-      originalPdfPath,
+      originalPdf,
       generation.output,
       keywords,
     );

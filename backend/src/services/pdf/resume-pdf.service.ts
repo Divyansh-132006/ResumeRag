@@ -93,11 +93,14 @@ const inspectStyle = async (pdfBytes: Buffer): Promise<ResumeStyle> => {
 };
 
 export const renderResumePdf = async (
-  originalPdfPath: string,
+  originalPdfSource: string | Buffer,
   resume: Record<string, unknown>,
   _keywords: string[] = [],
 ): Promise<Buffer> => {
-  const originalPdf = await readFile(originalPdfPath);
+  const originalPdf =
+    typeof originalPdfSource === "string"
+      ? await readFile(originalPdfSource)
+      : originalPdfSource;
   const style = await inspectStyle(originalPdf);
   const document = await PDFDocument.load(originalPdf);
   while (document.getPageCount() > 1) {

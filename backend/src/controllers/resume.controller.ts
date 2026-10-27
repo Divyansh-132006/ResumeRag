@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { unlink } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { extractPdfText } from "../services/resume/pdf-parser.service";
 import { parseResumeText } from "../services/resume/resume-parser.service";
@@ -179,6 +179,7 @@ export const uploadResume = async (
     const result = await extractPdfText(req.file.path);
     const normalizedText = normalizeResumeText(result.text);
     const structuredResume = parseResumeText(normalizedText);
+    const pdfData = await readFile(req.file.path);
     if (!normalizedText) {
       await unlink(req.file.path).catch(() => undefined);
       res.status(422).json({
@@ -194,6 +195,7 @@ export const uploadResume = async (
         userId: new mongoose.Types.ObjectId(req.userId),
         originalName: req.file.originalname,
         filename: req.file.filename,
+        pdfData,
         pageCount: result.pageCount,
         text: normalizedText,
         structuredResume,

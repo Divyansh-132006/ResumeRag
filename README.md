@@ -305,7 +305,7 @@ Defined under [backend/src/models/](C:/Users/royal/OneDrive/Desktop/ResumeRag/ba
 - **User**
   - `email`, `passwordHash`, timestamps
 - **Resume**
-  - `userId`, file metadata, extracted `text`, `structuredResume`
+  - `userId`, file metadata, source PDF bytes, extracted `text`, `structuredResume`
   - `status`: `review | approved`
   - `ingestionStatus`: `pending | indexed | failed`
 - **JobDescription**
@@ -422,6 +422,11 @@ Current automated tests:
 - Build: `npm install && npm run build`
 - Start: `npm start`
 - `postinstall` runs `npm run build` to ensure `dist/server.js` exists.
+- Uploaded PDFs are stored in MongoDB with each resume. Render’s free tier has an
+  ephemeral filesystem, so `UPLOAD_DIR` is used only as a temporary upload and
+  legacy-file fallback; no Render persistent disk is required for PDF export.
+- Resumes uploaded before this storage change may need to be uploaded again if
+  their old server file has already been removed.
 
 ## Frontend (Netlify or similar)
 - set `VITE_API_URL` to deployed backend `/api` base.
