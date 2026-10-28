@@ -471,7 +471,7 @@ function App() {
   if (!token) {
     return (
       <main className="shell">
-        <h1>Resume RAG</h1>
+        <h1>RoleFit Resume</h1>
         <p>Evidence-first resume tailoring without invented candidate facts.</p>
 
         <section className="panel">
@@ -540,7 +540,7 @@ function App() {
     <main className="shell">
       <header>
         <div>
-          <h1>Resume RAG</h1>
+          <h1>RoleFit Resume</h1>
           <p>Private evidence-first workspace</p>
         </div>
         <button className="secondary" onClick={signOut}>
