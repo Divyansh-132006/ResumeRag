@@ -35,3 +35,20 @@ export const uploadResume = multer({
     files: 1,
   },
 });
+
+const latexFileFilter: multer.Options["fileFilter"] = (_req, file, cb) => {
+  const extension = path.extname(file.originalname).toLowerCase();
+  if (extension !== ".tex") {
+    return cb(new Error("Only LaTeX .tex files are supported"));
+  }
+  cb(null, true);
+};
+
+export const uploadLatex = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: latexFileFilter,
+  limits: {
+    fileSize: getEnv().LATEX_MAX_SOURCE_BYTES,
+    files: 1,
+  },
+});

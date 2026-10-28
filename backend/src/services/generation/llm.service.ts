@@ -54,10 +54,11 @@ const fetchWithRetry = async (
   throw new ProviderError(provider, lastStatus, lastMessage);
 };
 
-export const completeJson = async (
+const providerRequest = async (
   system: string,
   user: string,
-): Promise<unknown> => {
+  responseFormat?: { type: "json_object" },
+): Promise<string> => {
   const {
     LLM_API_URL,
     LLM_API_KEY,
@@ -80,10 +81,11 @@ export const completeJson = async (
           contents: [{ role: "user", parts: [{ text: user }] }],
           generationConfig: {
             temperature: 0,
-            responseMimeType: "application/json",
+            ...(responseFormat
+              ? { responseMimeType: "application/json" }
+              : {}),
           },
         }),
-        signal: AbortSignal.timeout(60000),
       },
       "Gemini",
       AI_REQUEST_TIMEOUT_MS,
@@ -96,11 +98,7 @@ export const completeJson = async (
       .join("")
       .trim();
     if (!content) throw new Error("Gemini provider returned empty output");
-    try {
-      return JSON.parse(content);
-    } catch {
-      throw new Error("Gemini provider returned invalid JSON");
-    }
+    return content;
   }
   if (!LLM_API_URL || !LLM_API_KEY)
     throw new Error("LLM provider is not configured");
@@ -115,13 +113,12 @@ export const completeJson = async (
       body: JSON.stringify({
         model: LLM_MODEL,
         temperature: 0,
-        response_format: { type: "json_object" },
+        ...(responseFormat ? { response_format: responseFormat } : {}),
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
         ],
       }),
-      signal: AbortSignal.timeout(60000),
     },
     "LLM",
     AI_REQUEST_TIMEOUT_MS,
@@ -129,11 +126,24 @@ export const completeJson = async (
   const body = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
   };
-  const content = body.choices?.[0]?.message?.content;
+  const content = body.choices?.[0]?.message?.content?.trim();
   if (!content) throw new Error("LLM provider returned empty output");
+  return content;
+};
+
+export const completeJson = async (
+  system: string,
+  user: string,
+): Promise<unknown> => {
+  const content = await providerRequest(system, user, { type: "json_object" });
   try {
     return JSON.parse(content);
   } catch {
     throw new Error("LLM provider returned invalid JSON");
   }
 };
+
+export const completeText = async (
+  system: string,
+  user: string,
+): Promise<string> => providerRequest(system, user);

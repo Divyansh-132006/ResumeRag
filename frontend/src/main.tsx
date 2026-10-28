@@ -81,6 +81,11 @@ function App() {
   const [jobTitle, setJobTitle] = useState("");
   const [jobText, setJobText] = useState("");
   const [latexTemplate, setLatexTemplate] = useState(latexTemplateExample);
+  const [latexFile, setLatexFile] = useState<File | null>(null);
+  const [latexSource, setLatexSource] = useState("");
+  const [tailoredLatex, setTailoredLatex] = useState("");
+  const [latexDragging, setLatexDragging] = useState(false);
+  const [latexStep, setLatexStep] = useState<"source" | "job">("source");
 
   // UI state
   const [message, setMessage] = useState("");
@@ -210,7 +215,6 @@ function App() {
         jsonPost("POST", { title: jobTitle, text: jobText })
       );
       setJobTitle("");
-      setJobText("");
       setMessage("Job description analyzed and saved.");
       await load();
     } catch (error) {
@@ -305,6 +309,89 @@ function App() {
       setMessage(errorMessage(error, "LaTeX generation failed"));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const tailorLatex = async () => {
+    if (!latexSource.trim()) {
+      setMessage("Drop, upload, or paste your complete Overleaf .tex source first.");
+      return;
+    }
+    if (jobText.trim().length < 30) {
+      setMessage("Enter a job description with at least 30 characters.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append("source", latexSource);
+      form.append("jobDescription", jobText);
+      const result = await request<{
+        data: { latex: string; pdfBase64?: string; compileError?: string };
+      }>("/latex/tailor", {
+        method: "POST",
+        body: form,
+      });
+      setTailoredLatex(result.data.latex);
+      if (result.data.pdfBase64) {
+        const binary = atob(result.data.pdfBase64);
+        const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+        const pdfUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+        const pdfLink = document.createElement("a");
+        pdfLink.href = pdfUrl;
+        pdfLink.download = "tailored-resume.pdf";
+        pdfLink.click();
+        URL.revokeObjectURL(pdfUrl);
+      }
+      setMessage(
+        result.data.compileError
+          ? `LaTeX source is ready, but PDF compilation failed: ${result.data.compileError}`
+          : "Complete tailored LaTeX source and PDF are ready.",
+      );
+    } catch (error) {
+      setMessage(errorMessage(error, "LaTeX tailoring failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const readLatexFile = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".tex")) {
+      setMessage("Choose a .tex Overleaf file.");
+      return;
+    }
+    setLatexFile(file);
+    setLatexSource(await file.text());
+    setTailoredLatex("");
+    setLatexStep("source");
+  };
+
+  const moveToLatexJob = () => {
+    if (!latexSource.trim()) {
+      setMessage("Drop, upload, or paste your complete Overleaf .tex source first.");
+      return;
+    }
+    setLatexStep("job");
+    setMessage("");
+  };
+
+  const downloadLatex = () => {
+    const url = URL.createObjectURL(
+      new Blob([tailoredLatex], { type: "application/x-tex" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "tailored-resume.tex";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const copyLatex = async () => {
+    try {
+      await navigator.clipboard.writeText(tailoredLatex);
+      setMessage("Tailored LaTeX copied to the clipboard.");
+    } catch {
+      setMessage("Clipboard access failed. Select and copy the LaTeX from the editor.");
     }
   };
 
@@ -477,9 +564,13 @@ function App() {
       {page === "dashboard" && (
         <>
           <section className="panel">
-            <h2>Upload a resume</h2>
+            <h2>Choose your resume format</h2>
+            <p>
+              Use the PDF option for the existing Resume RAG review and grounded
+              generation flow, or use LaTeX for an Overleaf source file.
+            </p>
             <label className="drop">
-              Choose a text-based PDF
+              Choose a text-based PDF (Resume RAG)
               <input
                 type="file"
                 accept="application/pdf"
@@ -493,11 +584,112 @@ function App() {
           </section>
 
           <section className="panel">
+            <h2>One job description for both formats</h2>
+            <input
+              placeholder="Role title"
+              value={jobTitle}
+              onChange={(event) => setJobTitle(event.target.value)}
+            />
+            <textarea
+              placeholder="Paste the job description here (at least 30 characters)"
+              value={jobText}
+              onChange={(event) => setJobText(event.target.value)}
+            />
+            <button
+              disabled={busy || !jobTitle.trim() || jobText.trim().length < 30}
+              onClick={() => void saveJob()}
+            >
+              Analyze and save job description
+            </button>
+            <p>
+              This same job description is used for PDF generation and LaTeX
+              tailoring. You do not need to enter it twice.
+            </p>
+          </section>
+
+          <section className="panel">
             <h2>Workspace</h2>
             <p>
               {resumes.length} resumes · {jobs.length} job descriptions ·{" "}
               {generations.length} generations
             </p>
+          </section>
+          <section className="panel">
+            <h2>Option 2: tailor an Overleaf LaTeX resume</h2>
+            <p>
+              Choose PDF or LaTeX as your resume format. The job description entered
+              below is shared by both flows.
+            </p>
+            <label
+              className={`drop${latexDragging ? " drop-active" : ""}`}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setLatexDragging(true);
+              }}
+              onDragLeave={() => setLatexDragging(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setLatexDragging(false);
+                const file = event.dataTransfer.files[0];
+                if (file) void readLatexFile(file);
+              }}
+            >
+              {latexFile ? latexFile.name : "Choose an Overleaf .tex file"}
+              <input
+                type="file"
+                accept=".tex,text/x-tex"
+                disabled={busy}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void readLatexFile(file);
+                }}
+              />
+            </label>
+            <textarea
+              className="latex-template"
+              aria-label="Original Overleaf LaTeX source"
+              value={latexSource}
+              onChange={(event) => {
+                setLatexSource(event.target.value);
+                setLatexFile(null);
+                setTailoredLatex("");
+              }}
+              placeholder="Or paste the complete contents of main.tex here."
+            />
+            {latexStep === "source" ? (
+              <button disabled={busy || !latexSource.trim()} onClick={moveToLatexJob}>
+                Continue to job description
+              </button>
+            ) : (
+              <>
+                <div className="actions">
+                  <button className="secondary" disabled={busy} onClick={() => setLatexStep("source")}>
+                    Back to LaTeX source
+                  </button>
+                  <button disabled={busy || jobText.trim().length < 30} onClick={() => void tailorLatex()}>
+                    Analyze shared JD and generate LaTeX
+                  </button>
+                </div>
+              </>
+            )}
+            {tailoredLatex && (
+              <>
+                <div className="actions">
+                  <button className="secondary" onClick={() => void copyLatex()}>
+                    Copy LaTeX
+                  </button>
+                  <button className="secondary" onClick={downloadLatex}>
+                    Download .tex
+                  </button>
+                </div>
+                <textarea
+                  className="latex-template"
+                  aria-label="Tailored LaTeX source"
+                  value={tailoredLatex}
+                  onChange={(event) => setTailoredLatex(event.target.value)}
+                />
+              </>
+            )}
           </section>
         </>
       )}
@@ -535,27 +727,8 @@ function App() {
       {page === "jobs" && (
         <>
           <section className="panel">
-            <h2>Analyze job description</h2>
-            <input
-              placeholder="Role title"
-              value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
-            />
-            <textarea
-              placeholder="Paste at least 30 characters"
-              value={jobText}
-              onChange={(e) => setJobText(e.target.value)}
-            />
-            <button
-              disabled={busy || jobText.length < 30}
-              onClick={() => void saveJob()}
-            >
-              Analyze and save
-            </button>
-          </section>
-
-          <section className="panel">
-            <h2>Saved jobs</h2>
+            <h2>Saved job descriptions</h2>
+            <p>New job descriptions are added from the dashboard and can be used by the existing PDF generation flow.</p>
             {jobs.map((job) => (
               <article className="item" key={job._id}>
                 <strong>{job.title}</strong>

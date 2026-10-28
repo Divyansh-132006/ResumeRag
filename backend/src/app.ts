@@ -16,6 +16,7 @@ const env = getEnv();
 app.set("trust proxy", 1);
 const allowedOrigins = new Set([
   "https://jobresumerag.netlify.app",
+  "https://rolefitresume.netlify.app",
   "http://localhost:5173",
   ...(env.FRONTEND_ORIGIN?.split(",")
     .map((origin) => origin.trim())

@@ -25,7 +25,9 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     error instanceof Error ? error.message : "Internal server error";
   if (
     message === "Only PDF files are supported" ||
-    message === "Invalid PDF file signature"
+    message === "Invalid PDF file signature" ||
+    message === "Only LaTeX .tex files are supported" ||
+    message === "LaTeX source contains a blocked file or shell command"
   ) {
     res.status(400).json({ success: false, message });
     return;
